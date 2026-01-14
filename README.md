@@ -585,22 +585,44 @@ public async Task Post_FullCardNumberNeverLogged_SecurityCheck()
 
 ### Observability Enhancements (Priority: P2)
 
-**Future Additions**:
+**Current State**: Structured logging exists in the controller and acquirer service.
 
-1. **Correlation IDs** for distributed tracing
-```csharp
-public async Task<ActionResult<PaymentResponse>> PostPaymentAsync([FromBody] PostPaymentRequest request)
-{
-    var correlationId = Guid.NewGuid();
-    _logger.LogInformation("Processing payment {CorrelationId}", correlationId);
-    // Pass through to acquirer service, repository, etc.
-}
-```
+**Future Enhancement**:
+- Add and propagate a correlation ID for end-to-end tracing.
+- Expose `/health` and `/metrics`; track request count, p95 latency, and acquirer error rate.
+- Append audit trail events with redacted data for compliance and support.
+- Create dashboards and alerts for SLA/SLO breaches.
 
-2. **Metrics & Health Checks**
+**Why Not Now**: Monitoring infrastructure and alerting are out of scope for the assessment.
 
-3. **Idempotency Key Implementation**
+---
 
+### Idempotency Key Implementation (Priority: P1)
+
+**Current State**: Retries can create duplicate payments because requests are not deduplicated.
+
+**Future Enhancement**:
+- Require `Idempotency-Key` on `POST /api/Payments`.
+- Compute a stable request hash over canonical fields (never raw PAN).
+- Store key, hash, response payload, status code, and timestamp; replay on retries.
+- Return `409 Conflict` if the same key is reused with a different payload.
+- Use a durable store (SQL or Redis) with a unique constraint and TTL cleanup.
+
+**Why Not Now**: Needs persistence and cross-instance coordination that are not required for the exercise.
+
+---
+
+### Tokenisation & Vault Integration (Priority: P1)
+
+**Current State**: The gateway receives full card data and only stores the last 4 digits.
+
+**Future Enhancement**:
+- Integrate with a tokenization service or card vault.
+- Store and transmit tokens, last 4, and expiry only.
+- Limit de-tokenization to the acquirer edge if required.
+- Extend the API to accept token references and support token migration.
+
+**Why Not Now**: Requires external PCI-compliant infrastructure and API contract changes.
 
 ---
 
